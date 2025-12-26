@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { INITIAL_VOCABULARY } from '../constants';
-import { speakBilingual } from '../services/gemini';
+import { speakBilingual, preFetchAudio } from '../services/gemini';
 
 type ViewMode = 'categories' | 'words';
 
@@ -23,6 +23,7 @@ export const Library: React.FC = () => {
     'Vegetables': { label: 'Verdure', bn: 'শাকসবজি', icon: '🥦', gradient: 'from-[#006a4e] to-teal-600' },
     'Fruits': { label: 'Frutta', bn: 'ফল', icon: '🍎', gradient: 'from-[#f42a41] to-red-600' },
     'Drinking': { label: 'Bevande', bn: 'পানীয়', icon: '🥤', gradient: 'from-cyan-400 to-blue-500' },
+    'Clothes': { label: 'Vestiti', bn: 'জামাকাপড়', icon: '👕', gradient: 'from-violet-500 to-fuchsia-600' },
     'Vehicles': { label: 'Veicoli', bn: 'যানবাহন', icon: '🚗', gradient: 'from-slate-600 to-slate-800' },
     'Body Parts': { label: 'Corpo', bn: 'শরীরের অঙ্গ', icon: '💪', gradient: 'from-rose-400 to-[#f42a41]' },
     'Animals': { label: 'Animali', bn: 'প্রাণী', icon: '🦁', gradient: 'from-lime-500 to-green-600' },
@@ -30,22 +31,27 @@ export const Library: React.FC = () => {
     'Cities': { label: 'Città', bn: 'শহর', icon: '🏙️', gradient: 'from-sky-500 to-blue-600' },
   };
 
-  const filteredWords = INITIAL_VOCABULARY.filter(v => 
-    v.category === selectedCategory && 
-    (v.italian.toLowerCase().includes(searchQuery.toLowerCase()) || 
-     v.bangla.includes(searchQuery))
-  );
-
   const handleCategoryClick = (cat: string) => {
     setSelectedCategory(cat);
     setViewMode('words');
     window.scrollTo(0, 0);
+    
+    // Warm up with bilingual payloads
+    const categoryWords = INITIAL_VOCABULARY.filter(v => v.category === cat);
+    const payloads = categoryWords.map(w => `${w.italian}|||${w.bangla}`);
+    preFetchAudio(payloads);
   };
 
   const handleBack = () => {
     setViewMode('categories');
     setSearchQuery('');
   };
+
+  const filteredWords = INITIAL_VOCABULARY.filter(v => 
+    v.category === selectedCategory && 
+    (v.italian.toLowerCase().includes(searchQuery.toLowerCase()) || 
+     v.bangla.includes(searchQuery))
+  );
 
   if (viewMode === 'categories') {
     return (
@@ -89,12 +95,13 @@ export const Library: React.FC = () => {
         >
           <span className="text-lg">←</span> Indietro
         </button>
-        <div className="flex items-center justify-between mb-4">
+        <div 
+          className="flex items-center justify-between mb-4"
+        >
           <div>
             <h2 className="text-2xl font-black text-slate-800 tracking-tight">{meta?.label || selectedCategory}</h2>
             <p className="text-slate-400 bangla-font font-bold">{meta?.bn}</p>
           </div>
-          <span className="text-3xl">{meta?.icon}</span>
         </div>
         
         <div className="relative">
@@ -125,10 +132,10 @@ export const Library: React.FC = () => {
               >
                 <div className="absolute top-0 right-0 w-8 h-8 bg-white/10 rounded-full -mr-4 -mt-4" />
                 <div className="relative z-10 w-full text-center">
-                  <h3 className="text-[10px] font-black text-white leading-tight mb-0.5 drop-shadow-sm truncate px-1">
+                  <h3 className="text-[14px] font-black text-white leading-tight mb-1 drop-shadow-sm truncate px-1">
                     {word.italian}
                   </h3>
-                  <p className="text-white/80 bangla-font font-bold text-[9px] truncate px-1">
+                  <p className="text-white/90 bangla-font font-bold text-[13px] truncate px-1">
                     {word.bangla}
                   </p>
                 </div>

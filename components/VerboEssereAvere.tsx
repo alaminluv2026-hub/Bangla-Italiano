@@ -73,8 +73,12 @@ const VerboEssereAvere: React.FC<Props> = ({ onBack }) => {
         <button onClick={onBack} className="mb-4 flex items-center gap-2 text-emerald-700 font-black uppercase text-[10px] tracking-widest">
           <span className="text-lg">←</span> Indietro
         </button>
-        <h2 className="text-3xl font-black text-slate-800 tracking-tight">Verbi Ausiliari</h2>
-        <p className="text-slate-400 bangla-font font-bold">সহায়ক ক্রিয়াপদসমূহ</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-black text-slate-800 tracking-tight">Verbi Ausiliari</h2>
+            <p className="text-slate-400 bangla-font font-bold">সহায়ক ক্রিয়াপদসমূহ</p>
+          </div>
+        </div>
         
         <div className="flex gap-2 mt-6">
           <button 
@@ -95,7 +99,11 @@ const VerboEssereAvere: React.FC<Props> = ({ onBack }) => {
       <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-32">
         {/* Conjugation Card */}
         <section className={`p-6 rounded-[2.5rem] shadow-sm border ${activeTab === 'essere' ? 'bg-emerald-50 border-emerald-100' : 'bg-orange-50 border-orange-100'}`}>
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-500">Coniugazione (বর্তমান কাল)</h3>
+          <h3 
+            className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-slate-500 flex items-center justify-between"
+          >
+            <span>Coniugazione (বর্তমান কাল)</span>
+          </h3>
           <div className="grid grid-cols-2 gap-3">
             {(activeTab === 'essere' ? essereConjugations : avereConjugations).map((c, i) => (
               <button 
