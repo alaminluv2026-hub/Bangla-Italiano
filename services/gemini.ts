@@ -47,10 +47,9 @@ interface VoiceTask {
   reject: (err: any) => void;
 }
 
-// Global state to sync between Translation and TTS
 let lastGlobalCallTime = 0;
 let isQuotaExhausted = false;
-const MIN_GAP_MS = 5000; // Extremely safe 5s gap for free tier
+const MIN_GAP_MS = 3000; // Slightly more aggressive 3s gap
 
 class VoiceManager {
   private memoryCache = new Map<string, AudioBuffer>();
@@ -82,51 +81,42 @@ class VoiceManager {
       const task = this.queue.shift();
       if (!task) break;
 
-      // 1. Immediate Memory Check
-      if (this.memoryCache.has(task.payload)) {
-        task.resolve(this.memoryCache.get(task.payload)!);
-        continue;
-      }
-
-      // 2. Lockout Check (429 Penalty)
-      if (Date.now() < this.lockoutUntil) {
-        if (task.priority) {
-          task.reject(new Error("Rate limit cooldown. Please try in a few seconds."));
-        } else {
-          task.reject(new Error("Quota penalty: Skipping pre-fetch."));
-        }
-        continue;
-      }
-
-      // 3. Skip background pre-fetch if we've EVER hit 429 this session
-      if (!task.priority && isQuotaExhausted) {
-        task.reject(new Error("Background pre-fetch disabled due to previous 429."));
-        continue;
-      }
-
       try {
-        const cachedBase64 = await getCachedAudio(task.payload);
-        let buffer: AudioBuffer;
-
-        if (cachedBase64) {
-          buffer = await decodeAudioData(decode(cachedBase64), this.getContext(), 24000, 1);
-        } else {
-          // 4. Rate Limiter Gap
-          const now = Date.now();
-          const elapsed = now - lastGlobalCallTime;
-          if (elapsed < MIN_GAP_MS) {
-            await sleep(MIN_GAP_MS - elapsed);
-          }
-
-          const base64 = await this.executeFetch(task.payload);
-          lastGlobalCallTime = Date.now();
-          
-          await setCachedAudio(task.payload, base64);
-          buffer = await decodeAudioData(decode(base64), this.getContext(), 24000, 1);
+        // 1. Check Memory Cache (INSTANT)
+        if (this.memoryCache.has(task.payload)) {
+          task.resolve(this.memoryCache.get(task.payload)!);
+          continue;
         }
 
+        // 2. Check Persistent Cache (NEAR INSTANT)
+        const cachedBase64 = await getCachedAudio(task.payload);
+        if (cachedBase64) {
+          const buffer = await decodeAudioData(decode(cachedBase64), this.getContext(), 24000, 1);
+          this.memoryCache.set(task.payload, buffer);
+          task.resolve(buffer);
+          continue;
+        }
+
+        // 3. Rate Limit & API Fetch (ONLY IF NOT CACHED)
+        if (Date.now() < this.lockoutUntil) {
+          task.reject(new Error("Cooling down..."));
+          continue;
+        }
+
+        const now = Date.now();
+        const elapsed = now - lastGlobalCallTime;
+        if (elapsed < MIN_GAP_MS) {
+          await sleep(MIN_GAP_MS - elapsed);
+        }
+
+        const base64 = await this.executeFetch(task.payload);
+        lastGlobalCallTime = Date.now();
+        
+        await setCachedAudio(task.payload, base64);
+        const buffer = await decodeAudioData(decode(base64), this.getContext(), 24000, 1);
         this.memoryCache.set(task.payload, buffer);
         task.resolve(buffer);
+
       } catch (err) {
         task.reject(err);
       }
@@ -148,7 +138,8 @@ class VoiceManager {
       let speechConfig: any = {};
 
       if (useMulti) {
-        promptText = `TTS conversation:\nS1: ${it}\nS2: ${bn}`;
+        // Precise instruction for natural tutor style
+        promptText = `Translate and pronounce this dialogue naturally: Italian speaker says "${it}", then Bengali speaker says "${bn}".`;
         speechConfig = {
           multiSpeakerVoiceConfig: {
             speakerVoiceConfigs: [
@@ -187,16 +178,13 @@ class VoiceManager {
 
     } catch (error: any) {
       const status = error?.status || error?.code;
-      const is429 = status === 429 || error?.message?.includes('429');
-
-      if (is429) {
-        isQuotaExhausted = true; // Flag to disable future pre-fetching
-        this.lockoutUntil = Date.now() + 60000; // 60s hard penalty
+      if (status === 429) {
+        isQuotaExhausted = true;
+        this.lockoutUntil = Date.now() + 60000;
         throw error;
       }
-
       if (retryCount < 2 && (status === 500)) {
-        await sleep(3000 * (retryCount + 1));
+        await sleep(2000);
         return this.executeFetch(payload, retryCount + 1, forceSingle);
       }
       throw error;
@@ -213,12 +201,15 @@ class VoiceManager {
   async preFetch(items: string[]): Promise<void> {
     if (isQuotaExhausted) return;
     const unique = Array.from(new Set(items)).filter(i => !this.memoryCache.has(i));
-    const batch = unique.slice(0, 2); // Max 2 pre-fetches per screen
-    batch.forEach(item => this.queueTask(item, false).catch(() => {}));
+    for (const item of unique.slice(0, 5)) {
+      this.queueTask(item, false).catch(() => {});
+    }
   }
 
   async speak(payload: string): Promise<void> {
     if (!payload) return;
+    
+    // INSTANT STOP for interruption
     if (this.currentSource) {
       try { this.currentSource.stop(); } catch(e) {}
       this.currentSource = null;
@@ -232,10 +223,9 @@ class VoiceManager {
       source.connect(ctx.destination);
       this.currentSource = source;
       source.start(0);
-      // Fix: Wrapped the resolver r in an anonymous function to match the (ev: Event) signature of onended
       return new Promise(r => { source.onended = () => r(); });
     } catch (err) {
-      console.warn("Speech deferred:", err instanceof Error ? err.message : "Rate limit");
+      console.warn("Playback error:", err);
     }
   }
 }
@@ -246,19 +236,14 @@ export const preFetchAudio = (items: string[]) => manager.preFetch(items);
 
 export const performTranslation = async (text: string): Promise<string> => {
   try {
-    const elapsed = Date.now() - lastGlobalCallTime;
-    if (elapsed < MIN_GAP_MS) await sleep(MIN_GAP_MS - elapsed);
-
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Translate to ${/[a-zA-Z]/.test(text) ? 'Bengali' : 'Italian'}. Only the translation: "${text}"`,
     });
-    
-    lastGlobalCallTime = Date.now();
     return response.text?.trim() || "Error";
   } catch (error) {
-    return "Rate limit reached. Please wait.";
+    return "Limit reached.";
   }
 };
 

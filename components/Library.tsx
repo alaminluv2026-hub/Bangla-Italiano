@@ -9,6 +9,7 @@ export const Library: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('categories');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeWordId, setActiveWordId] = useState<number | null>(null);
 
   const categories = Array.from(new Set(INITIAL_VOCABULARY.map(v => v.category)));
 
@@ -35,11 +36,16 @@ export const Library: React.FC = () => {
     setSelectedCategory(cat);
     setViewMode('words');
     window.scrollTo(0, 0);
-    
-    // Warm up with bilingual payloads
     const categoryWords = INITIAL_VOCABULARY.filter(v => v.category === cat);
     const payloads = categoryWords.map(w => `${w.italian}|||${w.bangla}`);
     preFetchAudio(payloads);
+  };
+
+  const handleWordClick = (it: string, bn: string, index: number) => {
+    setActiveWordId(index);
+    speakBilingual(it, bn).finally(() => {
+      setActiveWordId(null);
+    });
   };
 
   const handleBack = () => {
@@ -60,7 +66,6 @@ export const Library: React.FC = () => {
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Biblioteca</h2>
           <p className="text-slate-400 bangla-font font-bold">লাইব্রেরি - বিভাগ নির্বাচন করুন</p>
         </div>
-
         <div className="flex-1 overflow-y-auto p-4 pb-32">
           <div className="grid grid-cols-2 gap-4">
             {categories.map((cat) => {
@@ -89,21 +94,15 @@ export const Library: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="p-6 bg-white border-b border-slate-50 sticky top-0 z-10">
-        <button 
-          onClick={handleBack}
-          className="mb-4 flex items-center gap-2 text-[#006a4e] font-black uppercase text-[10px] tracking-widest"
-        >
+        <button onClick={handleBack} className="mb-4 flex items-center gap-2 text-[#006a4e] font-black uppercase text-[10px] tracking-widest">
           <span className="text-lg">←</span> Indietro
         </button>
-        <div 
-          className="flex items-center justify-between mb-4"
-        >
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-black text-slate-800 tracking-tight">{meta?.label || selectedCategory}</h2>
             <p className="text-slate-400 bangla-font font-bold">{meta?.bn}</p>
           </div>
         </div>
-        
         <div className="relative">
           <input 
             type="text" 
@@ -115,7 +114,6 @@ export const Library: React.FC = () => {
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg opacity-40">🔍</span>
         </div>
       </div>
-
       <div className="flex-1 overflow-y-auto p-3 pb-32 bg-slate-50/20">
         {filteredWords.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-300">
@@ -127,10 +125,13 @@ export const Library: React.FC = () => {
             {filteredWords.map((word, i) => (
               <button 
                 key={i} 
-                onClick={() => speakBilingual(word.italian, word.bangla)}
-                className={`relative group h-24 rounded-2xl overflow-hidden shadow-sm active:scale-90 transition-all text-left bg-gradient-to-br ${meta?.gradient || 'from-[#006a4e] to-teal-600'} flex flex-col items-center justify-center p-2`}
+                onClick={() => handleWordClick(word.italian, word.bangla, i)}
+                className={`relative group h-24 rounded-2xl overflow-hidden shadow-sm active:scale-90 transition-all text-left bg-gradient-to-br ${meta?.gradient || 'from-[#006a4e] to-teal-600'} flex flex-col items-center justify-center p-2 ${activeWordId === i ? 'ring-4 ring-offset-2 ring-emerald-400 scale-105 z-20' : ''}`}
               >
                 <div className="absolute top-0 right-0 w-8 h-8 bg-white/10 rounded-full -mr-4 -mt-4" />
+                {activeWordId === i && (
+                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                )}
                 <div className="relative z-10 w-full text-center">
                   <h3 className="text-[14px] font-black text-white leading-tight mb-1 drop-shadow-sm truncate px-1">
                     {word.italian}
@@ -139,8 +140,8 @@ export const Library: React.FC = () => {
                     {word.bangla}
                   </p>
                 </div>
-                <div className="absolute bottom-1 right-1 opacity-40">
-                  <span className="text-[8px]">🔊</span>
+                <div className={`absolute bottom-1 right-1 transition-all ${activeWordId === i ? 'scale-150 opacity-100 text-yellow-300' : 'opacity-40'}`}>
+                  <span className="text-[10px]">🔊</span>
                 </div>
               </button>
             ))}

@@ -1,5 +1,7 @@
 {
   "name": "Bangla-Italiano",
   "description": "A premium language-learning app for Bangla speakers to master Italian through structured lessons and AI-powered voice conversations.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

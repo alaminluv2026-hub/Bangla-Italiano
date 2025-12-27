@@ -4,10 +4,14 @@ import { getGeminiClient } from '../services/gemini';
 import { decode, decodeAudioData, createPcmBlob } from '../services/audioUtils';
 import { Modality } from '@google/genai';
 
-const LiveTutor: React.FC = () => {
+interface LiveTutorProps {
+  onBack: () => void;
+}
+
+const LiveTutor: React.FC<LiveTutorProps> = ({ onBack }) => {
   const [isActive, setIsActive] = useState(false);
   const [status, setStatus] = useState('Tap to start speaking');
-  const [transcription, setTranscription] = useState<string[]>([]);
+  const [transcription, setTranscription] = useState<{role: 'You' | 'Bot', text: string}[]>([]);
   
   const audioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
@@ -16,7 +20,6 @@ const LiveTutor: React.FC = () => {
   const sessionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Initiates a live audio session with Gemini 2.5 Flash Native Audio.
   const startSession = async () => {
     try {
       const ai = getGeminiClient();
@@ -32,7 +35,7 @@ const LiveTutor: React.FC = () => {
         callbacks: {
           onopen: () => {
             setIsActive(true);
-            setStatus('I am listening... (Speak in Bangla or Italian)');
+            setStatus('I am listening...');
             
             const source = audioContextRef.current!.createMediaStreamSource(stream);
             const scriptProcessor = audioContextRef.current!.createScriptProcessor(4096, 1, 1);
@@ -40,7 +43,6 @@ const LiveTutor: React.FC = () => {
             scriptProcessor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
               const pcmBlob = createPcmBlob(inputData);
-              // Ensure data is sent only after the session promise resolves to avoid race conditions.
               sessionPromise.then((session) => {
                 session.sendRealtimeInput({ media: pcmBlob });
               });
@@ -52,17 +54,16 @@ const LiveTutor: React.FC = () => {
           onmessage: async (message) => {
             if (message.serverContent?.outputTranscription) {
                const text = message.serverContent.outputTranscription.text;
-               setTranscription(prev => [...prev, `Bot: ${text}`]);
+               setTranscription(prev => [...prev, {role: 'Bot', text}]);
             }
             if (message.serverContent?.inputTranscription) {
                const text = message.serverContent.inputTranscription.text;
-               setTranscription(prev => [...prev, `You: ${text}`]);
+               setTranscription(prev => [...prev, {role: 'You', text}]);
             }
 
             const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (audioData && outputAudioContextRef.current) {
               const ctx = outputAudioContextRef.current;
-              // Maintain synchronous audio playback using nextStartTime.
               nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
               const buffer = await decodeAudioData(decode(audioData), ctx, 24000, 1);
               const source = ctx.createBufferSource();
@@ -75,8 +76,9 @@ const LiveTutor: React.FC = () => {
             }
 
             if (message.serverContent?.interrupted) {
-              // Immediately stop all scheduled audio on user interruption.
-              sourcesRef.current.forEach(s => s.stop());
+              sourcesRef.current.forEach(s => {
+                try { s.stop(); } catch(e) {}
+              });
               sourcesRef.current.clear();
               nextStartTimeRef.current = 0;
             }
@@ -109,10 +111,9 @@ const LiveTutor: React.FC = () => {
     }
   };
 
-  // Closes the session and releases microphone/audio resources.
   const stopSession = () => {
     if (sessionRef.current) {
-      sessionRef.current.close();
+      try { sessionRef.current.close(); } catch(e) {}
       sessionRef.current = null;
     }
     setIsActive(false);
@@ -129,42 +130,59 @@ const LiveTutor: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-md mx-auto p-6">
-      <div className="flex-1 flex flex-col items-center justify-center space-y-8">
-        <div className={`w-48 h-48 rounded-full flex items-center justify-center transition-all duration-500 shadow-2xl ${
-          isActive ? 'bg-emerald-500 scale-110' : 'bg-slate-200'
+    <div className="flex flex-col h-full p-6">
+      <button onClick={() => { stopSession(); onBack(); }} className="mb-4 flex items-center gap-2 text-[#cd212a] font-black uppercase text-[10px] tracking-widest self-start">
+        <span className="text-lg">←</span> Esci (বন্ধ করুন)
+      </button>
+
+      <div className="flex-1 flex flex-col items-center justify-center space-y-10">
+        <div className={`relative w-56 h-56 rounded-[4rem] flex items-center justify-center transition-all duration-700 shadow-2xl ${
+          isActive ? 'bg-[#006a4e] scale-105' : 'bg-slate-100'
         }`}>
-          <div className={`w-36 h-36 rounded-full border-4 border-white/30 flex items-center justify-center ${
+          {isActive && (
+            <div className="absolute inset-0 border-8 border-white/20 rounded-[4rem] animate-ping" />
+          )}
+          <div className={`w-40 h-40 rounded-[3rem] border-4 border-white/40 flex items-center justify-center ${
             isActive ? 'animate-pulse' : ''
           }`}>
-             <span className="text-5xl">{isActive ? '🇮🇹' : '🎙️'}</span>
+             <span className="text-6xl">{isActive ? '🗣️' : '🎙️'}</span>
           </div>
         </div>
 
         <div className="text-center space-y-2">
-          <h2 className="text-2xl font-bold text-slate-800">AI Voice Tutor</h2>
-          <p className="text-slate-500 font-medium">{status}</p>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight">AI Live Tutor</h2>
+          <p className={`font-black uppercase text-[10px] tracking-[0.3em] ${isActive ? 'text-[#006a4e]' : 'text-slate-400'}`}>
+            {status}
+          </p>
         </div>
 
-        <div className="w-full bg-slate-100 rounded-2xl p-4 h-48 overflow-y-auto space-y-2">
+        <div className="w-full bg-white border-2 border-slate-100 rounded-[2.5rem] p-6 h-64 overflow-y-auto space-y-4 shadow-inner">
           {transcription.length === 0 ? (
-            <p className="text-slate-400 text-center mt-12 text-sm italic">Transcripts will appear here...</p>
+            <div className="h-full flex flex-col items-center justify-center opacity-30 text-center">
+               <span className="text-3xl mb-2">💬</span>
+               <p className="text-xs font-bold uppercase tracking-widest">Inizia a parlare...</p>
+               <p className="bangla-font text-xs mt-1">কথা বলা শুরু করুন</p>
+            </div>
           ) : (
             transcription.map((t, i) => (
-              <p key={i} className={`text-sm ${t.startsWith('You') ? 'text-indigo-600' : 'text-emerald-700'} font-medium`}>
-                {t}
-              </p>
+              <div key={i} className={`flex flex-col ${t.role === 'You' ? 'items-end' : 'items-start'}`}>
+                <div className={`p-4 rounded-[1.5rem] max-w-[85%] text-sm font-bold shadow-sm ${
+                  t.role === 'You' ? 'bg-[#cd212a] text-white rounded-tr-none' : 'bg-emerald-50 text-emerald-900 rounded-tl-none border border-emerald-100'
+                }`}>
+                  <p className={t.role === 'Bot' ? 'bangla-font' : ''}>{t.text}</p>
+                </div>
+              </div>
             ))
           )}
         </div>
 
         <button
           onClick={isActive ? stopSession : startSession}
-          className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-transform active:scale-95 ${
-            isActive ? 'bg-rose-500 text-white' : 'bg-emerald-600 text-white'
+          className={`w-full py-6 rounded-[2rem] font-black text-lg shadow-xl transition-all active:scale-95 ${
+            isActive ? 'bg-[#cd212a] text-white' : 'bg-[#006a4e] text-white'
           }`}
         >
-          {isActive ? 'Stop Session' : 'Start Lesson'}
+          {isActive ? 'STOP • বন্ধ করুন' : 'INIZIA • শুরু করুন'}
         </button>
       </div>
     </div>

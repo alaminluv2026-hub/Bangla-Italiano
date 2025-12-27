@@ -5,9 +5,10 @@ import { Tab, DifficultyLevel, Lesson, ConversationScenario, LessonContent } fro
 import { LESSONS, CONVERSATIONS, ALPHABET_DATA } from './constants';
 import VerboEssereAvere from './components/VerboEssereAvere';
 import { Library } from './components/Library';
+import LiveTutor from './components/LiveTutor';
 import { performTranslation, speakBilingual, speakAlphabetTile, preFetchAudio } from './services/gemini';
 
-type ViewState = Tab | 'lesson-active' | 'convo-active' | 'grammar-active';
+type ViewState = Tab | 'lesson-active' | 'convo-active' | 'grammar-active' | 'live-tutor-active';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ViewState>(Tab.HOME);
@@ -21,17 +22,11 @@ const App: React.FC = () => {
   const [translationResult, setTranslationResult] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // Pre-fetching is now handled on-demand inside startLesson or library interactions
-  // to avoid hitting the 429 quota immediately on app load.
-
   const startLesson = (lesson: Lesson) => {
     setSelectedLesson(lesson);
     setLessonStep(0);
     setActiveTab('lesson-active');
-    
-    // Background warm-up with bilingual payloads
     const payloads = lesson.content.map(c => `${c.italian}|||${c.bangla}`);
-    // The service now handles these sequentially to avoid 429
     preFetchAudio(payloads);
   };
 
@@ -90,8 +85,8 @@ const App: React.FC = () => {
            <div className="mb-8">
              <div className="flex justify-between items-start">
                <div>
-                 <h1 className="text-sm font-black opacity-50 uppercase tracking-[0.3em]">Ciao!</h1>
-                 <p className="opacity-30 bangla-font font-medium text-[11px] mt-0.5">সুপ্রভাত বন্ধু!</p>
+                 <h1 className="text-sm font-black opacity-50 uppercase tracking-[0.3em]">CIAO AMICO!</h1>
+                 <p className="opacity-30 bangla-font font-medium text-[11px] mt-0.5">হ্যালো বন্ধু!</p>
                </div>
                <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center text-xl shadow-inner backdrop-blur-sm">
                  🇮🇹
@@ -275,24 +270,42 @@ const App: React.FC = () => {
         <h2 className="text-3xl font-black">Dialoghi</h2>
         <p className="opacity-80 bangla-font text-lg">আলাপচারিতা</p>
       </div>
-      <div className="grid gap-4">
-        {CONVERSATIONS.map(convo => (
-          <button key={convo.id} onClick={() => startConversation(convo)} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-5 active:scale-95 transition-all hover:border-[#cd212a]/20">
-            <span className="text-5xl">{convo.icon}</span>
-            <div className="text-left flex-1">
-              <h4 className="font-black text-slate-800 text-xl mb-1">{convo.title}</h4>
-              <p className="text-sm text-slate-400 bangla-font font-bold">{convo.banglaTitle}</p>
-            </div>
-            <div className="text-[#cd212a] text-2xl font-black">→</div>
-          </button>
-        ))}
+
+      <div className="space-y-4">
+        <button 
+          onClick={() => setActiveTab('live-tutor-active')}
+          className="w-full flag-fusion-bg p-8 rounded-[2.5rem] text-white flex items-center gap-6 shadow-xl border-b-4 border-black/20 group active:scale-95 transition-all"
+        >
+          <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-4xl shadow-lg group-hover:rotate-12 transition-transform">🤖</div>
+          <div className="text-left">
+            <h3 className="text-2xl font-black leading-none mb-1">AI Live Tutor</h3>
+            <p className="bangla-font font-bold text-sm opacity-80">সরাসরি কথা বলুন</p>
+          </div>
+          <div className="ml-auto w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">✨</div>
+        </button>
+
+        <div className="pt-6">
+          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-4 px-2">Scenari Strutturati (গঠনমূলক সংলাপ)</h4>
+          <div className="grid gap-4">
+            {CONVERSATIONS.map(convo => (
+              <button key={convo.id} onClick={() => startConversation(convo)} className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-5 active:scale-95 transition-all hover:border-[#cd212a]/20">
+                <span className="text-5xl">{convo.icon}</span>
+                <div className="text-left flex-1">
+                  <h4 className="font-black text-slate-800 text-xl mb-1">{convo.title}</h4>
+                  <p className="text-sm text-slate-400 bangla-font font-bold">{convo.banglaTitle}</p>
+                </div>
+                <div className="text-[#cd212a] text-2xl font-black">→</div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
 
   return (
     <Layout 
-      activeTab={activeTab === 'lesson-active' || activeTab === 'grammar-active' ? Tab.HOME : activeTab as any} 
+      activeTab={activeTab === 'lesson-active' || activeTab === 'grammar-active' || activeTab === 'live-tutor-active' ? Tab.HOME : activeTab as any} 
       onTabChange={(tab) => {
         setActiveTab(tab);
         setSelectedLesson(null);
@@ -305,6 +318,7 @@ const App: React.FC = () => {
       {activeTab === Tab.CONVERSATIONS && renderConvoView()}
       {activeTab === Tab.TRANSLATE && renderTranslateView()}
       {activeTab === 'lesson-active' && renderLessonActive()}
+      {activeTab === 'live-tutor-active' && <LiveTutor onBack={() => setActiveTab(Tab.CONVERSATIONS)} />}
       {activeTab === 'convo-active' && selectedConvo && (
         <div className="p-6 pb-32">
           <button onClick={() => setActiveTab(Tab.CONVERSATIONS)} className="mb-8 p-3 bg-white shadow-sm border border-slate-100 rounded-2xl font-bold text-[#cd212a] flex items-center gap-3 active:scale-95 transition-all">
