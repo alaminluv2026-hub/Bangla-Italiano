@@ -30,6 +30,10 @@ export const Library: React.FC = () => {
     'Animals': { label: 'Animali', bn: 'প্রাণী', icon: '🦁', gradient: 'from-lime-500 to-green-600' },
     'School': { label: 'Scuola', bn: 'স্কুল', icon: '🏫', gradient: 'from-indigo-400 to-purple-500' },
     'Cities': { label: 'Città', bn: 'শহর', icon: '🏙️', gradient: 'from-sky-500 to-blue-600' },
+    'Nature': { label: 'Natura', bn: 'প্রকৃতি', icon: '🌿', gradient: 'from-emerald-500 to-green-700' },
+    'House': { label: 'Casa', bn: 'বাড়ি', icon: '🏠', gradient: 'from-stone-500 to-amber-700' },
+    'Jobs': { label: 'Lavoro', bn: 'কাজ', icon: '💼', gradient: 'from-blue-700 to-sky-900' },
+    'Weather': { label: 'Meteo', bn: 'আবহাওয়া', icon: '🌤️', gradient: 'from-cyan-500 to-blue-400' },
   };
 
   const handleCategoryClick = (cat: string) => {
@@ -121,27 +125,27 @@ export const Library: React.FC = () => {
             <p className="font-bold text-sm uppercase tracking-widest">Nessun risultato</p>
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             {filteredWords.map((word, i) => (
               <button 
                 key={i} 
                 onClick={() => handleWordClick(word.italian, word.bangla, i)}
-                className={`relative group h-24 rounded-2xl overflow-hidden shadow-sm active:scale-90 transition-all text-left bg-gradient-to-br ${meta?.gradient || 'from-[#006a4e] to-teal-600'} flex flex-col items-center justify-center p-2 ${activeWordId === i ? 'ring-4 ring-offset-2 ring-emerald-400 scale-105 z-20' : ''}`}
+                className={`relative group h-28 rounded-2xl overflow-hidden shadow-sm active:scale-95 transition-all text-left bg-gradient-to-br ${meta?.gradient || 'from-[#006a4e] to-teal-600'} flex flex-col items-center justify-center p-3 ${activeWordId === i ? 'ring-4 ring-offset-2 ring-emerald-400 scale-105 z-20' : ''}`}
               >
                 <div className="absolute top-0 right-0 w-8 h-8 bg-white/10 rounded-full -mr-4 -mt-4" />
                 {activeWordId === i && (
                   <div className="absolute inset-0 bg-white/20 animate-pulse" />
                 )}
                 <div className="relative z-10 w-full text-center">
-                  <h3 className="text-[14px] font-black text-white leading-tight mb-1 drop-shadow-sm truncate px-1">
+                  <h3 className="text-[16px] font-black text-white leading-tight mb-1 drop-shadow-sm truncate px-1">
                     {word.italian}
                   </h3>
-                  <p className="text-white/90 bangla-font font-bold text-[13px] truncate px-1">
+                  <p className="text-white/90 bangla-font font-bold text-[14px] truncate px-1">
                     {word.bangla}
                   </p>
                 </div>
-                <div className={`absolute bottom-1 right-1 transition-all ${activeWordId === i ? 'scale-150 opacity-100 text-yellow-300' : 'opacity-40'}`}>
-                  <span className="text-[10px]">🔊</span>
+                <div className={`absolute bottom-2 right-2 transition-all ${activeWordId === i ? 'scale-150 opacity-100 text-yellow-300' : 'opacity-40'}`}>
+                  <span className="text-sm">🔊</span>
                 </div>
               </button>
             ))}

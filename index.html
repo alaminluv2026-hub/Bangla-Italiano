@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Bangla-Italiano - Master Italian</title>
+    <title>BANGLA-ITALIANO - Master Italian</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -31,9 +31,20 @@
       .flag-gradient-it {
         background: linear-gradient(to right, var(--it-green) 33%, var(--it-white) 33% 66%, var(--it-red) 66%);
       }
-      .flag-fusion-bg {
-        background-color: var(--bd-green);
-        background-image: radial-gradient(circle at 80% 50%, rgba(244, 42, 65, 0.3) 0%, transparent 50%);
+      .vibrant-mesh {
+        background: linear-gradient(45deg, #006a4e, #008c45, #cd212a, #f42a41);
+        background-size: 400% 400%;
+        animation: gradient-animation 15s ease infinite;
+      }
+      @keyframes gradient-animation {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      .text-vibrant {
+        background: linear-gradient(to right, #006a4e, #008c45, #f42a41, #cd212a);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
       /* Custom scrollbar */
       ::-webkit-scrollbar {
