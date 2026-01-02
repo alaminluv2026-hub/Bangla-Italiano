@@ -1,18 +1,23 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import path from 'path';
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
 
-// vitejs.dev
-export default defineConfig({
-  plugins: [react()],
-  // 'base' should be '/' for Vercel root deployments. 
-  // If you see a blank screen, ensure this is NOT set to a relative path like './'
-  base: '/', 
-  build: {
-    // This ensures the output directory matches Vercel's default 'dist'
-    outDir: 'dist',
-  },
-  server: {
-    // Useful for local debugging to match the port Vercel might expect
-    port: 3000,
-  }
-})
+export default defineConfig(({ mode }) => {
+    const env = loadEnv(mode, '.', '');
+    return {
+      server: {
+        port: 3000,
+        host: '0.0.0.0',
+      },
+      plugins: [react()],
+      define: {
+        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      },
+      resolve: {
+        alias: {
+          '@': path.resolve(__dirname, '.'),
+        }
+      }
+    };
+});
