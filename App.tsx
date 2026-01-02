@@ -25,8 +25,18 @@ const App: React.FC = () => {
     setSelectedLesson(lesson);
     setLessonStep(0);
     setActiveTab('lesson-active');
+    
+    // Pre-fetch all lesson content for instant playback
     const payloads = lesson.content.map(c => `${c.italian}|||${c.bangla}`);
     preFetchAudio(payloads);
+    
+    // Pre-fetch alphabet tiles if it's alphabet lesson
+    if (lesson.level === DifficultyLevel.ALPHABET) {
+      const alphabetPayloads = lesson.content.map(c => 
+        `${c.letter || ''}, ${c.exampleWord || ''}|||${c.bangla || ''}`
+      );
+      preFetchAudio(alphabetPayloads);
+    }
   };
 
   const startConversation = (convo: ConversationScenario) => {
@@ -192,6 +202,16 @@ const App: React.FC = () => {
       </div>
     );
   };
+
+  // Pre-fetch alphabet audio when alphabet lesson is selected
+  useEffect(() => {
+    if (selectedLesson?.level === DifficultyLevel.ALPHABET) {
+      const alphabetPayloads = selectedLesson.content.map(c => 
+        `${c.letter || ''}, ${c.exampleWord || ''}|||${c.bangla || ''}`
+      );
+      preFetchAudio(alphabetPayloads);
+    }
+  }, [selectedLesson]);
 
   const renderLessonActive = () => {
     if (!selectedLesson) return null;

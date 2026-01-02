@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bd-green: #006a4e;
+  --bd-red: #f42a41;
+  --it-green: #008c45;
+  --it-white: #f4f5f0;
+  --it-red: #cd212a;
+}
+
+body {
+  font-family: 'Inter', 'Hind Siliguri', sans-serif;
+  background-color: #f0f4f2;
+  color: #1a202c;
+}
+
+.bangla-font {
+  font-family: 'Hind Siliguri', sans-serif;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.flag-gradient-it {
+  background: linear-gradient(to right, var(--it-green) 33%, var(--it-white) 33% 66%, var(--it-red) 66%);
+}
+
+.vibrant-mesh {
+  background: linear-gradient(45deg, #006a4e, #008c45, #cd212a, #f42a41);
+  background-size: 400% 400%;
+  animation: gradient-animation 15s ease infinite;
+}
+
+@keyframes gradient-animation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.text-vibrant {
+  background: linear-gradient(to right, #006a4e, #008c45, #f42a41, #cd212a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
